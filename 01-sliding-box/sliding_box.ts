@@ -22,17 +22,24 @@ function generateGoalBoard(side: number): number[][] {
 
 // NOTE: Here arrays are serialized before comparison
 //       (which seems like a slow aproach)
-function isDone(node: BoxState, side: number) {
-  return JSON.stringify(node.board) === JSON.stringify(generateGoalBoard(side));
+function isDone(node: BoxState) {
+  return (
+    JSON.stringify(node.board) ===
+    JSON.stringify(generateGoalBoard(node.board.length))
+  );
 }
 
 // A fast way to find the tile position in the goal state
 function tileToGoalPosition(tile: number, side: number): [number, number] {
+  if (tile === 0) {
+    return [side - 1, side - 1];
+  }
   return [Math.floor(tile / side), (tile + side - 1) % side];
 }
 
 // Heuristic function for Manhattan distance
-function h({ board: board }: BoxState, side: number): number {
+function h({ board: board }: BoxState): number {
+  const side = board.length;
   let totalDistance = 0;
 
   for (let i = 0; i < side; i++) {
@@ -49,7 +56,7 @@ function h({ board: board }: BoxState, side: number): number {
   return totalDistance;
 }
 
-function possibleSlides(node: BoxState, side: number): BoxState[] {
+function possibleSlides(node: BoxState): BoxState[] {
   const [bx, by] = node.blankPosition;
 
   // The direction of the moved tile is the dual
@@ -72,7 +79,7 @@ function possibleSlides(node: BoxState, side: number): BoxState[] {
     const [dx, dy] = slides[slideDir];
     const [bdx, bdy] = [bx + dx, by + dy];
 
-    const isValidAdj = [bdx, bdy].every((x) => _.inRange(x, side));
+    const isValidAdj = [bdx, bdy].every((x) => _.inRange(x, node.board.length));
     const isDualOfPred = node.path[node.path.length - 1] === dualDir[slideDir];
 
     if (isValidAdj && !isDualOfPred) {
@@ -91,12 +98,12 @@ function possibleSlides(node: BoxState, side: number): BoxState[] {
   });
 }
 
-function IDAS(start: BoxState, side: number) {
+function IDAS(start: BoxState) {
   let result = null;
-  let treshold = h(start, side);
+  let treshold = h(start);
 
   while (result === null) {
-    result = limitedAStar(start, isDone, possibleSlides, side, treshold);
+    result = limitedAStar(start, isDone, possibleSlides, treshold);
     treshold += 1;
   }
 
@@ -107,7 +114,6 @@ function limitedAStar(
   root: BoxState,
   isDone: Function,
   expand: Function,
-  side: number,
   treshold: number
 ) {
   let stack = [root];
@@ -116,17 +122,16 @@ function limitedAStar(
     // console.log("stack: ", stack);
 
     const current = stack[stack.length - 1];
-    if (isDone(current, side)) {
+    if (isDone(current)) {
       return stack.pop().path;
     }
 
     // sort in reversed order (top of stack = end of list)
-    const children = expand(current, side).sort(
-      (a: BoxState, b: BoxState) =>
-        a.path.length + h(a, side) >= a.path.length + h(b, side) ? -1 : 1
+    const children = expand(current).sort((a: BoxState, b: BoxState) =>
+      a.path.length + h(a) >= a.path.length + h(b) ? -1 : 1
     );
 
-    if (children.length === 0 || h(current, side) > treshold) {
+    if (children.length === 0 || h(current) > treshold) {
       stack.pop();
     } else {
       children.forEach((node: BoxState) => stack.push(node));
@@ -152,7 +157,7 @@ async function main() {
   }).then((value: string) => Number.parseInt(value));
 
   let lines: string[] = [];
-  console.log("Enter puzzle rows:")
+  console.log("Enter puzzle rows:");
   for await (const line of cli) {
     lines.push(line);
     if (lines.length >= Math.sqrt(size + 1)) {
@@ -164,8 +169,7 @@ async function main() {
     _.split(line, " ").map((x) => Number.parseInt(x))
   );
 
-  const totalTiles: number = size + 1;
-  const side: number = Math.sqrt(totalTiles);
+  const side: number = initialBoard.length;
 
   let [bx, by]: [number, number] = [side - 1, side - 1];
   if (blank !== -1) {
@@ -179,7 +183,7 @@ async function main() {
   };
 
   const startTime = performance.now();
-  const path = IDAS(initialState, side);
+  const path = IDAS(initialState);
   const elapsed = performance.now() - startTime;
 
   console.log(`Elapsed time: ${elapsed} miliseconds`);
