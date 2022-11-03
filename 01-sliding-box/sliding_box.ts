@@ -8,14 +8,14 @@ type BoxState = {
   path: string[];
 };
 
-// A fast way to find the tile position in the goal state
+// Find the tile coordinates in the goal state
 function tileToGoalPosition(tile: number, side: number): [number, number] {
   if (tile === 0) return [side - 1, side - 1];
   else return [Math.ceil(tile / side) - 1, (tile + side - 1) % side];
 }
 
-// Heuristic function for Manhattan distance
-function h({ board: board }: BoxState): number {
+// Manhattan distance
+function mDist({ board: board }: BoxState): number {
   const side = board.length;
   let totalDistance = 0;
 
@@ -29,18 +29,12 @@ function h({ board: board }: BoxState): number {
       }
     }
   }
-
   return totalDistance;
 }
 
-function possibleSlides(
-  node: BoxState,
-  visitedBoards: number[][][]
-): BoxState[] {
+function expand(node: BoxState, visitedNodes: BoxState[]): BoxState[] {
   const [bx, by] = node.blankPosition;
 
-  // The direction of the moved tile is the dual
-  // of the direction the blank "tile" is moved
   const slides = {
     down: [-1, 0],
     up: [1, 0],
@@ -48,7 +42,7 @@ function possibleSlides(
     left: [0, 1],
   };
 
-  return _.flatMap(_.keys(slides), (slideDir) => {
+  const children: BoxState[] = _.flatMap(_.keys(slides), (slideDir) => {
     const [dx, dy] = slides[slideDir];
     const [bdx, bdy] = [bx + dx, by + dy];
 
@@ -60,7 +54,9 @@ function possibleSlides(
       moved[bx][by] = moved[bdx][bdy];
       moved[bdx][bdy] = 0;
 
-      const wasVisited = _.some(visitedBoards, (vb) => _.isEqual(vb, moved));
+      const wasVisited = _.some(visitedNodes, (vn) =>
+        _.isEqual(vn.board, moved)
+      );
       if (wasVisited) return [];
 
       const pathSucc = _.clone(node.path);
@@ -69,50 +65,51 @@ function possibleSlides(
       return [{ board: moved, blankPosition: [bdx, bdy], path: pathSucc }];
     } else return [];
   });
+  return children;
 }
 
 function IDAS(start: BoxState) {
   let result = null;
-  let treshold = h(start);
+  let treshold = mDist(start); // + 11;
 
   while (result === null) {
-    console.log("HERE WE GO AGAIN!");
-    result = limitedAStar(start, possibleSlides, treshold);
-    // moves most often change the h value with 2
-    treshold += 1;
+    [result, treshold] = search(start, treshold);
   }
-
   return result;
 }
 
-function limitedAStar(root: BoxState, expand: Function, treshold: number) {
-  let stack = [root];
-  let visitedBoards = [];
+function search(root: BoxState, treshold: number): [null | string[], number] {
+  let stack: BoxState[] = [root];
+  let visitedNodes: BoxState[] = [];
+  let nextTreshold = Infinity;
+
+  const h = (node: BoxState) => mDist(node) + node.board.length;
 
   while (stack.length > 0) {
-    // console.log("stack: ", stack);
+    let current = stack[stack.length - 1];
+    visitedNodes.push(current);
 
-    // if i keep current in the stack, ill have the path
-    // in the stack at the end, but that will cost some memory
-    const current = stack.pop();
-    if (h(current) === 0) {
-      return current.path;
+    if (mDist(current) === 0) {
+      return [current.path, nextTreshold];
     }
-    visitedBoards.push(current.board);
 
-    console.log(h(current) + current.path.length, current.board);
-
-    if (h(current) + current.path.length <= treshold) {
-      // console.log(`Значи твърдиш че ${h(current)} + ${current.path.length} <= ${treshold}`);
+    const hcurrent = h(current);
+    if (hcurrent > treshold) {
+      stack.pop();
+      nextTreshold = Math.min(hcurrent, nextTreshold);
+    } else {
       // sort in reversed order (top of stack = end of list)
-      const children = expand(current, visitedBoards).sort(
-        (a: BoxState, b: BoxState) =>
-          a.path.length + h(a) >= a.path.length + h(b) ? -1 : 1
+      const children = expand(current, visitedNodes).sort(
+        (a: BoxState, b: BoxState) => (h(a) >= h(b) ? -1 : 1)
       );
-      children.forEach((node: BoxState) => stack.push(node));
+      if (children.length === 0) {
+        stack.pop();
+      } else {
+        children.forEach((node: BoxState) => stack.push(node));
+      }
     }
   }
-  return null;
+  return [null, nextTreshold];
 }
 
 async function main() {
@@ -123,12 +120,12 @@ async function main() {
 
   // Not counting the blank tile
   const size: number = await new Promise((resolve) => {
-    cli.question("Enter the number of tiles: ", resolve);
+    cli.question("Enter the number of tiles:", resolve);
   }).then((value: string) => Number.parseInt(value));
 
   // The position indexed from 1
   const blank: number = await new Promise((resolve) => {
-    cli.question("Enter the position of the blank tile: ", resolve);
+    cli.question("Enter the position of the blank tile:", resolve);
   }).then((value: string) => Number.parseInt(value));
 
   let lines: string[] = [];
