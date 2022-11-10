@@ -1,48 +1,48 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::seq::SliceRandom;
+use rand::rngs::ThreadRng;
 
 #[derive(Debug)]
 struct BoardState {
+  // index = row, value = column
   queens: Vec<usize>,
-  queens_per_row: Vec<usize>,
-  queens_per_d1: Vec<usize>,
-  queens_per_d2: Vec<usize>,
+  queens_per_col: Vec<i32>,
+  queens_per_d1: Vec<i32>,
+  queens_per_d2: Vec<i32>,
 }
 
-fn diagonal_indexes(queens: &Vec<usize>, r: usize) -> (usize, usize) {
-  let sum = queens[r] + r;
-  let shifted_diff = queens[r] + queens.len() - r - 1;
+fn diagonal_indexes(queens: &Vec<usize>, r: usize, c: usize) -> (usize, usize) {
+  let sum = c + r;
+  let shifted_diff = c + queens.len() - r - 1;
 
   (shifted_diff, sum)
 }
 
-fn conflicts_by_row(board: &BoardState, r: usize) -> usize {
-  let (d1i, d2i): (usize, usize) = diagonal_indexes(&board.queens, r);
+fn conflicts(board: &BoardState, r: usize, c: usize) -> i32 {
+  let (d1i, d2i): (usize, usize)
+                   = diagonal_indexes(&board.queens, r, c);
 
-  #[rustfmt::skip]
-  let conflicts =
-      board.queens_per_row[r]
-      + board.queens_per_d1[d1i]
-      + board.queens_per_d2[d2i]
-      - 3;
+  let queens_count
+    = board.queens_per_col[c]
+    + board.queens_per_d1[d1i]
+    + board.queens_per_d2[d2i];
 
-  conflicts
+  if c == board.queens[r] {
+    return queens_count as i32 - 3;
+  }
+  queens_count as i32
 }
 
-fn init_board_permutation(n: usize) -> BoardState {
-  let mut rng = rand::thread_rng();
-
+fn init_board_permutation(n: usize, rng: &mut ThreadRng) -> BoardState {
   let mut queens: Vec<usize> = (0..n).collect();
-  queens.shuffle(&mut rng);
+  queens.shuffle(rng);
 
-  let queens_per_row: Vec<usize> = [1].repeat(n as usize);
-  let mut queens_per_d1: Vec<usize> = [0].repeat(2 * n as usize - 1);
-  let mut queens_per_d2: Vec<usize> = [0].repeat(2 * n as usize - 1);
+  let queens_per_col: Vec<i32> = [1].repeat(n);
+  let mut queens_per_d1: Vec<i32> = [0].repeat(2 * n - 1);
+  let mut queens_per_d2: Vec<i32> = [0].repeat(2 * n - 1);
 
-  // D1: have the same diff (1-n)..n
-  // D2: have the same sum 0..2n
   for row in 0..n {
-    let (d1i, d2i) = diagonal_indexes(&queens, row);
+    let (d1i, d2i) = diagonal_indexes(&queens, row, queens[row]);
 
     queens_per_d1[d1i] += 1;
     queens_per_d2[d2i] += 1;
@@ -50,26 +50,25 @@ fn init_board_permutation(n: usize) -> BoardState {
 
   BoardState {
     queens,
-    queens_per_row,
+    queens_per_col,
     queens_per_d1,
     queens_per_d2,
   }
 }
 
+// TODO
 fn init_board_min_conflicts(n: usize) -> BoardState {
   let mut rng = rand::thread_rng();
 
   let mut queens: Vec<usize> = (0..n).collect();
   queens.shuffle(&mut rng);
 
-  let queens_per_row: Vec<usize> = [1].repeat(n as usize);
-  let mut queens_per_d1: Vec<usize> = [0].repeat(2 * n as usize - 1);
-  let mut queens_per_d2: Vec<usize> = [0].repeat(2 * n as usize - 1);
+  let queens_per_col: Vec<i32> = [1].repeat(n);
+  let mut queens_per_d1: Vec<i32> = [0].repeat(2 * n - 1);
+  let mut queens_per_d2: Vec<i32> = [0].repeat(2 * n - 1);
 
-  // D1: have the same diff (1-n)..n
-  // D2: have the same sum 0..2n
   for row in 0..n {
-    let (d1i, d2i) = diagonal_indexes(&queens, row);
+    let (d1i, d2i) = diagonal_indexes(&queens, row, queens[row]);
 
     queens_per_d1[d1i] += 1;
     queens_per_d2[d2i] += 1;
@@ -77,23 +76,19 @@ fn init_board_min_conflicts(n: usize) -> BoardState {
 
   BoardState {
     queens,
-    queens_per_row,
+    queens_per_col,
     queens_per_d1,
     queens_per_d2,
   }
 }
 
 fn is_done(board: &BoardState) -> bool {
-  #[rustfmt::skip]
-  let no_conflicts =
-    board
-    .queens_per_row
+  board
+    .queens_per_col
     .iter()
     .chain(board.queens_per_d1.iter())
     .chain(board.queens_per_d2.iter())
-    .all(|&queens_on_line| queens_on_line < 2);
-
-  no_conflicts
+    .all(|&queens_on_line| queens_on_line < 2)
 }
 
 fn print_board(board: &BoardState) {
@@ -110,33 +105,137 @@ fn print_board(board: &BoardState) {
   }
 }
 
-fn min_conflicts_1(board: &mut BoardState, max_steps: usize) {
+// 1) find the queen with most conflicts
+// 2) find the move dest with least conflicts
+//  - break ties randomly
+// 3) return the new state after the move
+fn queen_with_max_conflicts(board: &BoardState, rng: &mut ThreadRng)
+  -> usize {
+
+  // Maybe use some priority queue or something
+  // (queen, conflicts)
+  let mut with_most_conflicts: Vec<(usize,i32)> = Vec::new();
+  with_most_conflicts.push((0, i32::MIN));
+
+  let n = board.queens.len();
+
+  for i in 0..n {
+    let (_, conf_max) = with_most_conflicts[0];
+    let current_conflicts = conflicts(board, i, board.queens[i]);
+    println!("{i}: {current_conflicts} conflicts");
+
+    if current_conflicts >= conf_max{
+      if current_conflicts != conf_max {
+        with_most_conflicts.clear();
+      }
+      with_most_conflicts.push((i, current_conflicts));
+    }
+  }
+
+  let to_move = Uniform::from(0..with_most_conflicts.len()).sample(rng);
+  let (queen, _) = with_most_conflicts[to_move];
+
+  queen
+}
+
+fn min_conflict_move(board: &BoardState, queen: usize, rng: &mut ThreadRng)
+  -> usize {
+  // Maybe use some priority queue or something
+  // (queen, conflicts)
+  let mut with_least_conflicts: Vec<(usize,i32)> = Vec::new();
+  with_least_conflicts.push((0, i32::MAX));
+
+  let n = board.queens.len();
+
+  for c in 0..n {
+    let (_, conf_min) = with_least_conflicts[0];
+    let current_conflicts = conflicts(board, queen, c);
+    // println!("tile ({queen},{c}) with {current_conflicts} conflicts");
+
+    if current_conflicts <= conf_min{
+      if current_conflicts != conf_min {
+        with_least_conflicts.clear();
+      }
+      with_least_conflicts.push((c, current_conflicts));
+    }
+  }
+
+  let to_move = Uniform::from(0..with_least_conflicts.len()).sample(rng);
+  let (destination, _) = with_least_conflicts[to_move];
+
+  destination
+}
+
+fn move_queen(board: &mut BoardState, queen: usize, destination: usize) {
+    println!("moving quuen No: {:?}", queen + 1);
+
+    let queen_col = board.queens[queen];
+
+    let (queen_d1i, queen_d2i)
+      = diagonal_indexes(&board.queens, queen, queen_col);
+
+    let (dest_d1i, dest_d2i)
+      = diagonal_indexes(&board.queens, queen, destination);
+
+    println!("queen(row) and destination(col): {queen}, {destination}");
+    println!("diagonals: {:?} {:?}", board.queens_per_d1, board.queens_per_d2);
+    println!("columns: {:?}", board.queens_per_col);
+
+    board.queens[queen] = destination;
+
+    board.queens_per_col[queen_col] -= 1;
+    board.queens_per_col[destination] += 1;
+
+    board.queens_per_d1[queen_d1i] -= 1;
+    board.queens_per_d1[dest_d1i] += 1;
+
+    board.queens_per_d2[queen_d2i] -= 1;
+    board.queens_per_d2[dest_d2i] += 1;
+}
+
+fn min_conflicts(board: BoardState, max_steps: usize, rng: &mut ThreadRng)
+  -> Option<BoardState>{
+
+  // Make sure this doesnt clone the memory
+  let mut board: BoardState = board;
+
   for i in 0..max_steps {
+    print_board(&board);
     if is_done(&board) {
-      print_board(&board);
+      println!("Just found a solution in {i} steps!");
+      return Some(board);
     }
 
-    //TODO
+    let max_conf_queen = queen_with_max_conflicts(&board, rng);
+    let min_conf_tile = min_conflict_move(&board, max_conf_queen, rng);
+
+    move_queen(&mut board, max_conf_queen, min_conf_tile);
   }
+
+  None
 }
 
 fn main() {
+  let mut rng: ThreadRng = rand::thread_rng();
   // TODO: initialize board using min conflicts (breaking ties randomly)
   // TODO: take n from user input
-  // TODO: use the smallest type in terms of memmory
   let n = 5;
-  let mut board: BoardState = init_board_permutation(n);
+  let board: BoardState = init_board_permutation(n, &mut rng);
 
   let max_steps = 100;
-  // let index = Uniform::from(0..n).sample(&mut rng);
-  // println!("My random index {:?}", index);
 
-  print_board(&board);
-  println!("Initial queens: {:?}", board.queens);
-  println!("Initial row conflicts: {:?}", board.queens_per_row);
-  println!("Initial d1 conflicts: {:?}", board.queens_per_d1);
-  println!("Initial d2 conflicts: {:?}", board.queens_per_d2);
+  let result = min_conflicts(board, max_steps, &mut rng);
+
+  match result {
+    Some(board) => print_board(&board),
+    None => println!("Solition not found :(")
+  }
 }
+// NOTE: some code that generates a random number:
+// let index = Uniform::from(0..n).sample(&mut rng);
+// println!("My random index {:?}", index);
+
 // NOTE:
 //   There is always only 1 queen per column.
 // - pick a strategy to init the board with: random, minConf, knight jumps
+
