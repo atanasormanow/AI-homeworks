@@ -122,7 +122,6 @@ fn queen_with_max_conflicts(board: &BoardState, rng: &mut ThreadRng)
   for i in 0..n {
     let (_, conf_max) = with_most_conflicts[0];
     let current_conflicts = conflicts(board, i, board.queens[i]);
-    println!("{i}: {current_conflicts} conflicts");
 
     if current_conflicts >= conf_max{
       if current_conflicts != conf_max {
@@ -150,7 +149,6 @@ fn min_conflict_move(board: &BoardState, queen: usize, rng: &mut ThreadRng)
   for c in 0..n {
     let (_, conf_min) = with_least_conflicts[0];
     let current_conflicts = conflicts(board, queen, c);
-    // println!("tile ({queen},{c}) with {current_conflicts} conflicts");
 
     if current_conflicts <= conf_min{
       if current_conflicts != conf_min {
@@ -170,16 +168,10 @@ fn move_queen(board: &mut BoardState, queen: usize, destination: usize) {
     println!("moving quuen No: {:?}", queen + 1);
 
     let queen_col = board.queens[queen];
-
     let (queen_d1i, queen_d2i)
       = diagonal_indexes(&board.queens, queen, queen_col);
-
     let (dest_d1i, dest_d2i)
       = diagonal_indexes(&board.queens, queen, destination);
-
-    println!("queen(row) and destination(col): {queen}, {destination}");
-    println!("diagonals: {:?} {:?}", board.queens_per_d1, board.queens_per_d2);
-    println!("columns: {:?}", board.queens_per_col);
 
     board.queens[queen] = destination;
 
@@ -217,9 +209,8 @@ fn min_conflicts(board: BoardState, max_steps: usize, rng: &mut ThreadRng)
 
 fn main() {
   let mut rng: ThreadRng = rand::thread_rng();
-  // TODO: initialize board using min conflicts (breaking ties randomly)
   // TODO: take n from user input
-  let n = 5;
+  let n = 8;
   let board: BoardState = init_board_permutation(n, &mut rng);
 
   let max_steps = 100;
@@ -231,11 +222,10 @@ fn main() {
     None => println!("Solition not found :(")
   }
 }
-// NOTE: some code that generates a random number:
-// let index = Uniform::from(0..n).sample(&mut rng);
-// println!("My random index {:?}", index);
 
-// NOTE:
-//   There is always only 1 queen per column.
-// - pick a strategy to init the board with: random, minConf, knight jumps
-
+// TODO:
+// - use minConflicts to init the board
+// - take n from user input
+// - introduce random restart, to avoid loops
+// - Move struct definition of Board in a separate file and
+//   move helper functions as imlementations for the struct
