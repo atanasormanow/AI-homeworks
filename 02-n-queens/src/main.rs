@@ -1,4 +1,6 @@
 use rand::rngs::ThreadRng;
+use std::time::Instant;
+use std::io;
 
 mod board;
 use board::BoardState;
@@ -6,10 +8,7 @@ use board::BoardState;
 fn min_conflicts(max_steps: usize, n: usize, rng: &mut ThreadRng)
   -> Option<BoardState>{
 
-  let board: BoardState = BoardState::with_permutation(n, rng);
-
-  // Make sure this doesnt clone the memory
-  let mut board: BoardState = board;
+  let mut board: BoardState = BoardState::with_permutation(n, rng);
 
   for i in 0..max_steps {
     BoardState::print_board(&board);
@@ -31,12 +30,22 @@ fn min_conflicts(max_steps: usize, n: usize, rng: &mut ThreadRng)
 
 fn main() {
   let mut rng: ThreadRng = rand::thread_rng();
-  // TODO: take n from user input
-  let n = 8;
-
   let max_steps = 100;
 
-  let result = min_conflicts(max_steps, n, &mut rng);
+  let mut user_input = String::new();
+  let stdin = io::stdin(); // We get `Stdin` here.
+  stdin.read_line(&mut user_input).ok();
+
+  let now = Instant::now();
+
+  let result
+    = user_input
+    .trim_end()
+    .parse::<usize>()
+    .ok()
+    .and_then(|n| min_conflicts(max_steps, n, &mut rng));
+
+  println!("Finished in: {:?}", now.elapsed());
 
   match result {
     Some(board) => BoardState::print_board(&board),
@@ -46,8 +55,5 @@ fn main() {
 
 // TODO:
 // - use minConflicts to init the board
-// - take n from user input
 // - introduce random restart, to avoid loops
-// - add timer for the computation time
-// - Move struct definition of Board in a separate file and
-//   move helper functions as imlementations for the struct
+// - try to make the board module cleaner

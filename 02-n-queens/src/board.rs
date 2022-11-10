@@ -128,8 +128,6 @@ impl BoardState {
     }
 
   pub fn move_queen(board: &mut BoardState, queen: usize, destination: usize) {
-    println!("moving quuen No: {:?}", queen + 1);
-
     let queen_col = board.queens[queen];
     let (queen_d1i, queen_d2i)
       = BoardState::diagonal_indexes(&board.queens, queen, queen_col);
