@@ -1,9 +1,8 @@
 use rand::distributions::{Distribution, Uniform};
 use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
-use std::time::Instant;
 
-#[derive(Debug)]
+// #[derive(Debug)]
 pub struct BoardState {
   // index = row, value = column
   queens: Vec<usize>,
@@ -49,7 +48,6 @@ impl BoardState {
         queens_per_d2: vec![0; 2 * n - 1],
       };
 
-    let now = Instant::now();
     for row in 0..n {
       let min_conflict_move = board.min_conflict_move(row, rng);
       board.queens[row] = min_conflict_move;
@@ -60,63 +58,56 @@ impl BoardState {
       board.queens_per_d1[d1i] += 1;
       board.queens_per_d2[d2i] += 1;
     }
-    println!("Min conflicts initialization in : {:?}", now.elapsed());
 
     board
   }
 
   pub fn queen_with_max_conflicts(&self, rng: &mut ThreadRng)
     -> usize {
-
-      // Maybe use some priority queue or something
-      // (queen, conflicts)
-      let mut with_most_conflicts: Vec<(usize,i32)> = Vec::new();
-      with_most_conflicts.push((0, i32::MIN));
-
       let n = self.queens.len();
 
-      for i in 0..n {
-        let (_, conf_max) = with_most_conflicts[0];
-        let current_conflicts
-          = BoardState::conflicts(self, i, self.queens[i]);
+      let mut conf_max: i32 = i32::MIN;
+      let mut with_most_conflicts: Vec<usize> = Vec::new();
+
+      for r in 0..n {
+        let current_conflicts = self.conflicts(r, self.queens[r]);
 
         if current_conflicts >= conf_max{
           if current_conflicts != conf_max {
+            conf_max = current_conflicts;
             with_most_conflicts.clear();
           }
-          with_most_conflicts.push((i, current_conflicts));
+          with_most_conflicts.push(r);
         }
       }
 
       let to_move = Uniform::from(0..with_most_conflicts.len()).sample(rng);
-      let (queen, _) = with_most_conflicts[to_move];
 
-      queen
+      with_most_conflicts[to_move]
     }
 
   pub fn min_conflict_move(&self, queen: usize, rng: &mut ThreadRng)
     -> usize {
-      let mut with_least_conflicts: Vec<(usize,i32)> = Vec::new();
-      with_least_conflicts.push((0, i32::MAX));
-
       let n = self.queens.len();
 
+      let mut conf_min: i32 = i32::MAX;
+      let mut with_least_conflicts: Vec<usize> = Vec::new();
+
       for c in 0..n {
-        let (_, conf_min) = with_least_conflicts[0];
         let current_conflicts = self.conflicts(queen, c);
 
         if current_conflicts <= conf_min {
           if current_conflicts != conf_min {
+            conf_min = current_conflicts;
             with_least_conflicts.clear();
           }
-          with_least_conflicts.push((c, current_conflicts));
+          with_least_conflicts.push(c);
         }
       }
 
       let to_move = Uniform::from(0..with_least_conflicts.len()).sample(rng);
-      let (destination, _) = with_least_conflicts[to_move];
 
-      destination
+      with_least_conflicts[to_move]
     }
 
   pub fn move_queen(&mut self, queen: usize, destination: usize) {
@@ -140,15 +131,19 @@ impl BoardState {
 
   pub fn print_board(&self) {
     let n = self.queens.len();
-    for r in 0..n {
-      for c in 0..n {
-        if c == self.queens[r] {
-          print!("*");
-        } else {
-          print!("-");
+    if n > 100 {
+      println!("Board is too large to print (n > 100)");
+    } else {
+      for r in 0..n {
+        for c in 0..n {
+          if c == self.queens[r] {
+            print!("*");
+          } else {
+            print!("-");
+          }
         }
+        println!();
       }
-      println!();
     }
   }
 
