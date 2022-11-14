@@ -62,6 +62,8 @@ impl BoardState {
     board
   }
 
+  // NOTE: searching for MAX and MIN
+  //       can be done with the same code
   pub fn queen_with_max_conflicts(&self, rng: &mut ThreadRng)
     -> usize {
       let n = self.queens.len();
@@ -86,6 +88,8 @@ impl BoardState {
       with_most_conflicts[to_move]
     }
 
+  // NOTE: searching for MAX and MIN
+  //       can be done with the same code
   pub fn min_conflict_move(&self, queen: usize, rng: &mut ThreadRng)
     -> usize {
       let n = self.queens.len();
