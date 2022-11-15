@@ -35,7 +35,8 @@ packages:
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
 #
-# extra-deps:
+extra-deps:
+  - perfect-vector-shuffle-0.1.1.1@sha256:3c034b313e0b81147860bd40d1f8f84f1ca191beba76476abbecbbeb2edcf752,3681
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
@@ -50,6 +51,7 @@ packages:
 
 # Control whether we use the GHC we find on the path
 system-ghc: true
+allow-newer: true
 #
 # Require a specific version of stack, using version ranges
 # require-stack-version: -any # Default
