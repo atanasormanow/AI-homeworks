@@ -1,0 +1,13 @@
+cradle:
+  stack:
+    - path: "./src"
+      component: "travelling-salesman-hs:lib"
+
+    - path: "./app/Main.hs"
+      component: "travelling-salesman-hs:exe:travelling-salesman-hs-exe"
+
+    - path: "./app/Paths_travelling_salesman_hs.hs"
+      component: "travelling-salesman-hs:exe:travelling-salesman-hs-exe"
+
+    - path: "./test"
+      component: "travelling-salesman-hs:test:travelling-salesman-hs-test"
