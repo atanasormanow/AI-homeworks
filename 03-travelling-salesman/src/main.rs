@@ -1,19 +1,21 @@
 use rand::rngs::ThreadRng;
 use rand::seq::SliceRandom;
 use rand::Rng;
+use std::env;
 
 type Gene = Vec<usize>;
-type Point = (i8, i8);
+type Point = (i16, i16);
 
+#[derive(Debug)]
 struct Individual {
   gene: Gene,
   score: f32,
 }
 
 fn distance((x1, y1): Point, (x2, y2): Point) -> f32 {
-  let dx: f32 = (x2 as i16 - x1 as i16).pow(2) as f32;
-  let dy: f32 = (y2 as i16 - y1 as i16).pow(2) as f32;
-  (dx + dy).sqrt()
+  let dx = x2.wrapping_sub(x1) as f32;
+  let dy = y2.wrapping_sub(y1) as f32;
+  (dx * dx + dy * dy).sqrt()
 }
 
 fn score_gene(g: &Gene, points: &Vec<Point>) -> f32 {
@@ -21,7 +23,8 @@ fn score_gene(g: &Gene, points: &Vec<Point>) -> f32 {
   let mut score: f32 = 0.0;
 
   for i in 1..n {
-    score += distance(points[g[i]], points[g[i - 1]]);
+    let d = distance(points[g[i]], points[g[i - 1]]);
+    score += d;
   }
 
   score
@@ -49,21 +52,29 @@ fn generate_individuals(
   n: usize,
   m: usize,
   points: &Vec<Point>,
-  rng: &mut ThreadRng
-  ) -> Vec<Individual> {
+  rng: &mut ThreadRng,
+) -> Vec<Individual> {
   let mut individuals: Vec<Individual> = Vec::with_capacity(n);
 
   for _ in 0..m {
     let gene: Gene = generate_gene(n, rng);
     let score: f32 = score_gene(&gene, &points);
-    individuals.push(Individual{gene, score});
+    individuals.push(Individual { gene, score });
   }
 
   individuals
 }
 
 fn main() {
+  env::set_var("RUST_BACKTRACE", "1");
+
+  let n = 10;
+  let gen_size = 5;
   let mut rng: ThreadRng = rand::thread_rng();
+  let points = generate_points(n, &mut rng);
+  let individuals = generate_individuals(n, gen_size, &points, &mut rng);
+
+  println!("{:?}", individuals);
 }
 
 // NOTE:
