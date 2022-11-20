@@ -22,15 +22,18 @@ type Fitness = Float
 
 type ScoredVIndividual = (VIndividual, Fitness)
 
-type Point = (Int, Int)
+type Point = (Float, Float)
 
 -- (forBreeding, oldBest, oldWorst)
 type Proportions = (Int, Int, Int)
 
+-- Impure functions:
+--------------------
+
 -- n is used in 2 different contexts
-genPoints :: Int -> IO (Vector Point)
-genPoints n =
-  let genPoint = getStdRandom $ randomR ((-n, -n), (n, n))
+genPoints :: Int -> Float -> IO (Vector Point)
+genPoints n range =
+  let genPoint = getStdRandom $ randomR ((-range, -range), (range, range))
    in Data.Vector.replicateM n (genPoint :: IO Point)
 
 permuteFromTo :: Int -> Int -> IO VIndividual
@@ -39,11 +42,24 @@ permuteFromTo m n = (shuffleM . fromList) [m .. n]
 population :: Int -> Int -> IO [VIndividual]
 population n = flip Control.Monad.replicateM $ permuteFromTo 0 (n - 1)
 
+randomIndexes :: Int -> Int -> IO [Int]
+randomIndexes n treshold =
+  let i = getStdRandom $ randomR (0, treshold)
+   in toList <$> Data.Vector.replicateM n (i :: IO Int)
+
+mutationSwaps :: Int -> Int -> IO [(Int, Int)]
+mutationSwaps n treshold = do
+  p1 <- randomIndexes n (treshold - 1)
+  p2 <- randomIndexes n (treshold - 1)
+  return $ zip p1 p2
+
+--------------------
+
 distance :: Point -> Point -> Float
 distance (x1, y1) (x2, y2) =
   let dx = x2 - x1
       dy = y2 - y1
-   in (sqrt . fromIntegral) (dx * dx + dy * dy)
+   in sqrt (dx * dx + dy * dy)
 
 score :: Vector Point -> VIndividual -> Fitness
 score ps inds =
@@ -112,37 +128,3 @@ evolve points proportions mutations =
     . select proportions
     . sortPopulation
     . evalFitness points
-
-randomIndexes :: Int -> Int -> IO [Int]
-randomIndexes n treshold =
-  let i = getStdRandom $ randomR (0, treshold)
-   in toList <$> Data.Vector.replicateM n (i :: IO Int)
-
-mutationSwaps :: Int -> IO [(Int, Int)]
-mutationSwaps n = do
-  p1 <- randomIndexes n (n - 1)
-  p2 <- randomIndexes n (n - 1)
-  return $ zip p1 p2
-
--- individuals :: [VIndividual]
--- individuals =
---   map
---     fromList
---     [ [0, 1, 2, 3, 4, 5, 6, 9, 8, 7],
---       [0 .. 9],
---       [9, 8 .. 0],
---       [9, 1, 2, 3, 4, 5, 6, 7, 8, 0]
---     ]
-
--- test :: IO ()
--- test = do
---   let points = fromList $ zip [0 .. 9] [0 .. 9]
---   let sorted = sortPopulation $ evalFitness points individuals
---   print sorted
---   let selected = select (4, 0, 0) sorted
---   print "Selected AF"
---   print selected
---   print "Heres the indexes"
---   let crossed = crossSelected selected
---   print "crossed AF"
---   print crossed
