@@ -39,10 +39,10 @@ citiesName =
 testBest :: IO ()
 testBest = do
   print "Best individual below:"
-  print $ evalFitness citiesXY [fromList [0,5,9,4,2,7,11,3,6,10,1,8]]
+  print $ evalFitness citiesXY [fromList [0, 5, 9, 4, 2, 7, 11, 3, 6, 10, 1, 8]]
 
-test :: IO ()
-test = do
+testWithCities :: IO ()
+testWithCities = do
   let n = 12
   let populationSize = 100
   let proportions = (70, 20, 10)
@@ -50,9 +50,8 @@ test = do
   mutations <- mutationSwaps populationSize n
   individuals <- population n populationSize
   let generations = iterate (evolve points proportions mutations) individuals
-  let k = 50
+  let k = 100
   let (ind, f) = head . sortPopulation . evalFitness points $ generations !! k
-  print ("Distance traveled: " ++ show f)
   print $ Data.Vector.map (citiesName !!) ind
 
 main :: IO ()
@@ -67,9 +66,16 @@ main = do
   points <- genPoints n (fromIntegral n)
   mutations <- mutationSwaps populationSize n
   individuals <- population n populationSize
-  let nextGeneration = evolve points proportions mutations individuals
-  print $ take 5 $ sortPopulation $ evalFitness points nextGeneration
+  let best = head . sortPopulation . evalFitness points
+  let gen1 = best individuals
+  print ("Best path is " ++ show (snd gen1) ++ " long in generation 1")
+  let generations = iterate (evolve points proportions mutations) individuals
+  let lastGen = 100
+  let (_, f) =
+        head . sortPopulation . evalFitness points $ generations !! lastGen
+  print ("Best path is " ++ show f ++ " long in generation " ++ show lastGen)
 
 -- TODO:
 -- - minimize conversions between [a] and (Vector a)
--- - cross with the bad individuals too
+-- - ? include weak individuals in the breeding selection
+-- - ? mutate by swapping i-1 and i+1 for some i instead of random indexes

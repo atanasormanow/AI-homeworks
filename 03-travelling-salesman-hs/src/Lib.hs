@@ -8,9 +8,9 @@ module Lib
   )
 where
 
-import Control.Monad (replicateM)
+import Control.Monad as Monad (replicateM)
 import Data.List (sortBy, (\\))
-import Data.Vector hiding (concat, drop, foldl, foldr, map, reverse, take, zip, zipWith, zipWith3)
+import Data.Vector as V hiding (concat, foldl, foldr, map, reverse, splitAt, zip, zipWith)
 import Immutable.Shuffle (shuffleM)
 import System.Random (getStdRandom, randomR)
 import Prelude hiding (head, tail)
@@ -29,23 +29,21 @@ type Proportions = (Int, Int, Int)
 
 -- Impure functions:
 --------------------
-
--- n is used in 2 different contexts
 genPoints :: Int -> Float -> IO (Vector Point)
 genPoints n range =
   let genPoint = getStdRandom $ randomR ((-range, -range), (range, range))
-   in Data.Vector.replicateM n (genPoint :: IO Point)
+   in V.replicateM n (genPoint :: IO Point)
 
 permuteFromTo :: Int -> Int -> IO VIndividual
 permuteFromTo m n = (shuffleM . fromList) [m .. n]
 
 population :: Int -> Int -> IO [VIndividual]
-population n = flip Control.Monad.replicateM $ permuteFromTo 0 (n - 1)
+population n = flip Monad.replicateM $ permuteFromTo 0 (n - 1)
 
 randomIndexes :: Int -> Int -> IO [Int]
 randomIndexes n treshold =
   let i = getStdRandom $ randomR (0, treshold)
-   in toList <$> Data.Vector.replicateM n (i :: IO Int)
+   in toList <$> V.replicateM n (i :: IO Int)
 
 mutationSwaps :: Int -> Int -> IO [(Int, Int)]
 mutationSwaps n treshold = do
@@ -88,18 +86,19 @@ sortPopulation inds =
 select :: Proportions -> [ScoredVIndividual] -> ([VIndividual], [VIndividual])
 select (treshold, best, worst) xs =
   let sorted = sortPopulation xs
-      (top, bot) = Prelude.splitAt treshold sorted
+      (top, bot) = splitAt treshold sorted
       new = map fst top
-      old = map fst $ take best top Prelude.++ take worst (reverse bot)
+      old = map fst $ Prelude.take best top Prelude.++ Prelude.take worst (reverse bot)
    in (new, old)
 
+-- NOTE: an individual is represented by a permutation
 crossOp :: VIndividual -> VIndividual -> [VIndividual]
 crossOp parent1 parent2 =
-  let i = Data.Vector.length parent1 `div` 2
-      (pref1, _) = Data.Vector.splitAt i parent1
-      (pref2, _) = Data.Vector.splitAt i parent2
-      child1 = pref1 Data.Vector.++ vdiff parent2 pref1
-      child2 = pref2 Data.Vector.++ vdiff parent1 pref2
+  let i = V.length parent1 `div` 2
+      pref1 = V.take i parent1
+      pref2 = V.take i parent2
+      child1 = pref1 V.++ vdiff parent2 pref1
+      child2 = pref2 V.++ vdiff parent1 pref2
    in [child1, child2]
 
 cross :: [VIndividual] -> [VIndividual] -> [VIndividual]
