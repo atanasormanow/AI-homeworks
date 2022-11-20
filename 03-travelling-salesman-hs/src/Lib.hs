@@ -2,8 +2,9 @@ module Lib
   ( genPoints,
     population,
     mutationSwaps,
+    evalFitness,
+    sortPopulation,
     evolve,
-    test,
   )
 where
 
@@ -23,9 +24,10 @@ type ScoredVIndividual = (VIndividual, Fitness)
 
 type Point = (Int, Int)
 
--- (forBreeding, OldBest, OldWorst)
+-- (forBreeding, oldBest, oldWorst)
 type Proportions = (Int, Int, Int)
 
+-- n is used in 2 different contexts
 genPoints :: Int -> IO (Vector Point)
 genPoints n =
   let genPoint = getStdRandom $ randomR ((-n, -n), (n, n))
@@ -61,35 +63,36 @@ vdiff v1 v2 =
 evalFitness :: Vector Point -> [VIndividual] -> [ScoredVIndividual]
 evalFitness ps = map (\v -> (v, score ps v))
 
-sortGeneration :: [ScoredVIndividual] -> [ScoredVIndividual]
-sortGeneration inds =
+sortPopulation :: [ScoredVIndividual] -> [ScoredVIndividual]
+sortPopulation inds =
   let totalScore = foldl (\acc (_, s) -> acc + s) 0 inds
       cmp (_, f1) (_, f2) = compare (f1 / totalScore) (f2 / totalScore)
    in sortBy cmp inds
 
 select :: Proportions -> [ScoredVIndividual] -> ([VIndividual], [VIndividual])
 select (treshold, best, worst) xs =
-  let sorted = sortGeneration xs
+  let sorted = sortPopulation xs
       (top, bot) = Prelude.splitAt treshold sorted
       new = map fst top
       old = map fst $ take best top Prelude.++ take worst (reverse bot)
    in (new, old)
 
-crossOp :: Int -> VIndividual -> VIndividual -> [VIndividual]
-crossOp i parent1 parent2 =
-  let (pref1, _) = Data.Vector.splitAt i parent1
+crossOp :: VIndividual -> VIndividual -> [VIndividual]
+crossOp parent1 parent2 =
+  let i = Data.Vector.length parent1 `div` 2
+      (pref1, _) = Data.Vector.splitAt i parent1
       (pref2, _) = Data.Vector.splitAt i parent2
       child1 = pref1 Data.Vector.++ vdiff parent2 pref1
       child2 = pref2 Data.Vector.++ vdiff parent1 pref2
    in [child1, child2]
 
-cross :: [Int] -> [VIndividual] -> [VIndividual] -> [VIndividual]
-cross ps1 ps2 = concat . zipWith3 crossOp ps1 ps2
+cross :: [VIndividual] -> [VIndividual] -> [VIndividual]
+cross ps1 = concat . zipWith crossOp ps1
 
-crossSelected :: [Int] -> ([VIndividual], [VIndividual]) -> [VIndividual]
-crossSelected indexes (selected, survivors) =
+crossSelected :: ([VIndividual], [VIndividual]) -> [VIndividual]
+crossSelected (selected, survivors) =
   let (p1, p2) = uninterleave selected
-   in survivors Prelude.++ cross indexes p1 p2
+   in survivors Prelude.++ cross p1 p2
 
 swap :: (Int, Int) -> VIndividual -> VIndividual
 swap (i, j) ind = ind // [(i, ind ! j), (j, ind ! i)]
@@ -100,15 +103,14 @@ mutate = zipWith swap
 evolve ::
   Vector Point ->
   Proportions ->
-  [Int] ->
   [(Int, Int)] ->
   [VIndividual] ->
   [VIndividual]
-evolve points proportions crossIndexes mutations =
+evolve points proportions mutations =
   mutate mutations
-    . crossSelected crossIndexes
+    . crossSelected
     . select proportions
-    . sortGeneration
+    . sortPopulation
     . evalFitness points
 
 randomIndexes :: Int -> Int -> IO [Int]
@@ -122,28 +124,25 @@ mutationSwaps n = do
   p2 <- randomIndexes n (n - 1)
   return $ zip p1 p2
 
-individuals :: [VIndividual]
-individuals =
-  map
-    fromList
-    [ [0, 1, 2, 3, 4, 5, 6, 9, 8, 7],
-      [0 .. 9],
-      [9,8..0],
-      [9, 1, 2, 3, 4, 5, 6, 7, 8, 0]
-    ]
+-- individuals :: [VIndividual]
+-- individuals =
+--   map
+--     fromList
+--     [ [0, 1, 2, 3, 4, 5, 6, 9, 8, 7],
+--       [0 .. 9],
+--       [9, 8 .. 0],
+--       [9, 1, 2, 3, 4, 5, 6, 7, 8, 0]
+--     ]
 
-test :: IO ()
-test = do
-  let points = fromList $ zip [0 .. 9] [0 .. 9]
-  let sorted = sortGeneration $ evalFitness points individuals
-  print sorted
-  let selected = select (4, 0, 0) sorted
-  print "Selected AF"
-  print selected
-  ci <- randomIndexes 2 9
-  print "Heres the indexes"
-  print ci
-  let crossed = crossSelected ci selected
-  print "crossed AF"
-  print crossed
-
+-- test :: IO ()
+-- test = do
+--   let points = fromList $ zip [0 .. 9] [0 .. 9]
+--   let sorted = sortPopulation $ evalFitness points individuals
+--   print sorted
+--   let selected = select (4, 0, 0) sorted
+--   print "Selected AF"
+--   print selected
+--   print "Heres the indexes"
+--   let crossed = crossSelected selected
+--   print "crossed AF"
+--   print crossed
