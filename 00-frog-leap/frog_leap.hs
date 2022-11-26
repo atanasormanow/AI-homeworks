@@ -45,6 +45,9 @@ frogLeap s =
       isDone = (reverse s ==)
     }
 
+initFrogs :: Int -> String
+initFrogs n = replicate n 'l' ++ '_' : replicate n 'r'
+
 dfs :: (Eq a) => SearchProblem a -> Maybe [a]
 dfs (SearchProblem start expand isDone) = loop start
   where
@@ -53,8 +56,9 @@ dfs (SearchProblem start expand isDone) = loop start
       | otherwise = (node :) <$> listToMaybe (mapMaybe loop $ expand node)
 
 main = do
-  putStrLn "Enter the frog leap puzzle start state: "
-  puzzle <- getLine
+  putStrLn "Enter the frog leap puzzle size: "
+  line <- getLine
+  let frogs = initFrogs (read line :: Int)
   putStrLn "The steps to the solution are as follows:"
-  (putStr . unlines . fromJust . dfs . frogLeap) puzzle
+  (putStr . unlines . fromJust . dfs . frogLeap) frogs
 
