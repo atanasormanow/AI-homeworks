@@ -56,4 +56,5 @@ main = do
   putStrLn "Enter the frog leap puzzle start state: "
   puzzle <- getLine
   putStrLn "The steps to the solution are as follows:"
-  putStr $ unlines $ fromJust $ dfs $ frogLeap puzzle
+  (putStr . unlines . fromJust . dfs . frogLeap) puzzle
+

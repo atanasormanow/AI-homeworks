@@ -42,7 +42,7 @@ function expand(node: BoxState, visitedNodes: BoxState[]): BoxState[] {
     left: [0, 1],
   };
 
-  const children: BoxState[] = _.flatMap(_.keys(slides), (slideDir) => {
+  return _.flatMap(_.keys(slides), (slideDir) => {
     const [dx, dy] = slides[slideDir];
     const [bdx, bdy] = [bx + dx, by + dy];
 
@@ -65,12 +65,11 @@ function expand(node: BoxState, visitedNodes: BoxState[]): BoxState[] {
       return [{ board: moved, blankPosition: [bdx, bdy], path: pathSucc }];
     } else return [];
   });
-  return children;
 }
 
 function IDAS(start: BoxState) {
   let result = null;
-  let treshold = mDist(start); // + 11;
+  let treshold = mDist(start);
 
   while (result === null) {
     [result, treshold] = search(start, treshold);
