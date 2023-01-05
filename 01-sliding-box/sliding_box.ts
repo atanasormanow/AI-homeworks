@@ -32,7 +32,7 @@ function mDist({ board: board }: BoxState): number {
   return totalDistance;
 }
 
-function expand(node: BoxState, visitedNodes: BoxState[]): BoxState[] {
+function expand(node: BoxState): BoxState[] {
   const [bx, by] = node.blankPosition;
 
   const slides = {
@@ -42,22 +42,25 @@ function expand(node: BoxState, visitedNodes: BoxState[]): BoxState[] {
     left: [0, 1],
   };
 
+  const dualDir = {
+    up: "down",
+    down: "up",
+    left: "right",
+    right: "left",
+  };
+
   return _.flatMap(_.keys(slides), (slideDir) => {
     const [dx, dy] = slides[slideDir];
     const [bdx, bdy] = [bx + dx, by + dy];
 
     const isValidAdj = [bdx, bdy].every((x) => _.inRange(x, node.board.length));
+    const isDualOfPred = node.path[node.path.length - 1] === dualDir[slideDir];
 
-    if (isValidAdj) {
+    if (isValidAdj && !isDualOfPred) {
       let moved = _.cloneDeep(node.board);
 
       moved[bx][by] = moved[bdx][bdy];
       moved[bdx][bdy] = 0;
-
-      const wasVisited = _.some(visitedNodes, (vn) =>
-        _.isEqual(vn.board, moved)
-      );
-      if (wasVisited) return [];
 
       const pathSucc = _.clone(node.path);
       pathSucc.push(slideDir);
@@ -79,14 +82,12 @@ function IDAS(start: BoxState) {
 
 function search(root: BoxState, treshold: number): [null | string[], number] {
   let stack: BoxState[] = [root];
-  let visitedNodes: BoxState[] = [];
   let nextTreshold = Infinity;
 
   const h = (node: BoxState) => mDist(node) + node.board.length;
 
   while (stack.length > 0) {
     let current = stack[stack.length - 1];
-    visitedNodes.push(current);
 
     if (mDist(current) === 0) {
       return [current.path, nextTreshold];
@@ -98,9 +99,7 @@ function search(root: BoxState, treshold: number): [null | string[], number] {
       nextTreshold = Math.min(hcurrent, nextTreshold);
     } else {
       // sort in reversed order (top of stack = end of list)
-      const children = expand(current, visitedNodes).sort(
-        (a: BoxState, b: BoxState) => (h(a) >= h(b) ? -1 : 1)
-      );
+      const children = expand(current).sort((a: BoxState, b: BoxState) => (h(a) >= h(b) ? -1 : 1));
       if (children.length === 0) {
         stack.pop();
       } else {
@@ -136,9 +135,7 @@ async function main() {
     }
   }
 
-  let initialBoard: number[][] = lines.map((line) =>
-    _.split(line, " ").map((x) => Number.parseInt(x))
-  );
+  let initialBoard: number[][] = lines.map((line) => _.split(line, " ").map((x) => Number.parseInt(x)));
 
   const side: number = initialBoard.length;
 

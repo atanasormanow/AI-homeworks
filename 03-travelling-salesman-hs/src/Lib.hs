@@ -24,11 +24,11 @@ type ScoredVIndividual = (VIndividual, Fitness)
 
 type Point = (Float, Float)
 
+-- TODO: store all constants used for configuration
+-- TODO: record syntax
 -- (forBreeding, oldBest, oldWorst)
 type Proportions = (Int, Int, Int)
 
--- Impure functions:
---------------------
 genPoints :: Int -> Float -> IO (Vector Point)
 genPoints n range =
   let genPoint = getStdRandom $ randomR ((-range, -range), (range, range))
@@ -37,21 +37,16 @@ genPoints n range =
 permuteFromTo :: Int -> Int -> IO VIndividual
 permuteFromTo m n = (shuffleM . fromList) [m .. n]
 
+-- n is the population size
 population :: Int -> Int -> IO [VIndividual]
-population n = flip Monad.replicateM $ permuteFromTo 0 (n - 1)
+population size n = Monad.replicateM n permutation
+  where
+    permutation = permuteFromTo 0 (size - 1)
 
-randomIndexes :: Int -> Int -> IO [Int]
-randomIndexes n treshold =
-  let i = getStdRandom $ randomR (0, treshold)
+nRandomInRange :: Int -> Int -> Int -> IO [Int]
+nRandomInRange n start end =
+  let i = getStdRandom $ randomR (start, end)
    in toList <$> V.replicateM n (i :: IO Int)
-
-mutationSwaps :: Int -> Int -> IO [(Int, Int)]
-mutationSwaps n treshold = do
-  p1 <- randomIndexes n (treshold - 1)
-  p2 <- randomIndexes n (treshold - 1)
-  return $ zip p1 p2
-
---------------------
 
 distance :: Point -> Point -> Float
 distance (x1, y1) (x2, y2) =
@@ -59,6 +54,7 @@ distance (x1, y1) (x2, y2) =
       dy = y2 - y1
    in sqrt (dx * dx + dy * dy)
 
+-- TODO: maybe overflow here
 score :: Vector Point -> VIndividual -> Fitness
 score ps inds =
   let op (d, i') i = (d + distance (ps ! i) (ps ! i'), i)
@@ -109,11 +105,24 @@ crossSelected (selected, survivors) =
   let (p1, p2) = uninterleave selected
    in survivors Prelude.++ cross p1 p2
 
-swap :: (Int, Int) -> VIndividual -> VIndividual
-swap (i, j) ind = ind // [(i, ind ! j), (j, ind ! i)]
+-- Mutation v
+mutationSwaps :: Int -> Int -> IO [(Int, Int)]
+mutationSwaps n treshold = do
+  chances <- nRandomInRange n 0 100
+  indexes <- nRandomInRange n 1 (treshold - 2)
+  return $ zip chances indexes
 
+-- TODO: avoid out of bounds
+-- TODO: take argument instead of using a constant
 mutate :: [(Int, Int)] -> [VIndividual] -> [VIndividual]
 mutate = zipWith swap
+  where
+    swap (c, i) ind =
+      if c > 10
+        then ind
+        else ind // [(i - 1, ind ! i + 1), (i + 1, ind ! i - 1)]
+
+---------------------
 
 evolve ::
   Vector Point ->

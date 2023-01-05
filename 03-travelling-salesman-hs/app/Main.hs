@@ -49,10 +49,11 @@ testWithCities = do
   let points = citiesXY
   mutations <- mutationSwaps populationSize n
   individuals <- population n populationSize
-  let generations = iterate (evolve points proportions mutations) individuals
-  let k = 100
-  let (ind, f) = head . sortPopulation . evalFitness points $ generations !! k
-  print $ Data.Vector.map (citiesName !!) ind
+  print individuals
+  -- let generations = iterate (evolve points proportions mutations) individuals
+  -- let k = 100
+  -- let (ind, f) = head . sortPopulation . evalFitness points $ generations !! k
+  -- print $ Data.Vector.map (citiesName !!) ind
 
 main :: IO ()
 main = do

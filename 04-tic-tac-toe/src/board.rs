@@ -7,67 +7,61 @@ pub enum Tile {
 
 pub type Board = [[Tile; 3]; 3];
 
+fn diag_wins(board: Board, player: Tile) -> bool {
+  [board[0][0], board[1][1], board[2][2]]
+    .into_iter()
+    .all(|x| x == player)
+    || [board[0][2], board[1][1], board[2][0]]
+      .into_iter()
+      .all(|x| x == player)
+}
+
+fn row_or_col_wins(board: Board, player: Tile) -> bool {
+  for i in 0..3 {
+    let row_wins = [board[i][0], board[i][1], board[i][2]]
+      .into_iter()
+      .all(|x| x == player);
+
+    let col_wins = [board[0][i], board[1][i], board[2][i]]
+      .into_iter()
+      .all(|x| x == player);
+
+    if row_wins || col_wins {
+      return true;
+    }
+  }
+  false
+}
+
 // Some(Tile), where Tile in {X, O} and Tile wins
 // Some(E) for tie
 // None when not a terminal state
 // TODO remove pub
-pub fn terminal_state_winner(board: Board) -> Option<Tile> {
-  let mut full = true;
-  let mut d1_win = true;
-  let mut d2_win = true;
+pub fn terminal_state_score(board: Board, player: Tile) -> Option<i8> {
+  let op_player = flip_tile(player);
+  let i_win =
+    diag_wins(board, player)
+    || row_or_col_wins(board, player);
 
-  for i in 0..2 {
-    let i1 = i + 1;
-    let mut r_win = true;
-    let mut c_win = true;
+  let u_win =
+    diag_wins(board, player)
+    || row_or_col_wins(board, player);
 
-    d1_win =
-      d1_win
-      && board[i][i] != Tile::E
-      && board[i][i] == board[i1][i1];
-    d2_win =
-      d2_win
-      && board[i][2 - i] != Tile::E
-      && board[i][2 - i] == board[i1][2 - i1];
-
-    for j in 0..2 {
-      let j1 = j + 1;
-      r_win = r_win && board[i][j] != Tile::E && board[i][j] == board[i][j1];
-      c_win = c_win && board[j][i] != Tile::E && board[j][i] == board[j1][i];
-
-      // NOTE: there may be duplicate checks this way,
-      //       but lazy evaluation will take place
-      full = full && board[i][j] != Tile::E && board[i1][j1] != Tile::E;
-    }
-    if r_win || c_win {
-      println!("row or column {i} wins: {:?}", board[i][i]);
-      return Some(board[i][i]);
-    }
+  if i_win {
+    return Some(1);
+  } else if u_win {
+    return Some(-1);
   }
-  if d1_win || d2_win {
-    println!("diagonal wins: {:?}", board[1][1]);
-    return Some(board[1][1]);
+
+  let board_is_full = board
+    .into_iter()
+    .all(|x| x.into_iter().all(|y| y != Tile::E));
+
+  if board_is_full {
+    return Some(0);
   }
-  if full {
-    println!("Board is just full");
-    return Some(Tile::E);
-  }
+
   None
-}
-
-// TODO: better way to handle "fmap"
-pub fn terminal_state_score(board: Board, player_symbol: Tile) -> Option<i8> {
-  match terminal_state_winner(board) {
-    Some(Tile::E) => Some(0),
-    Some(c) => {
-      if c == player_symbol {
-        Some(1)
-      } else {
-        Some(-1)
-      }
-    }
-    None => None,
-  }
 }
 
 pub fn successors(board: Board, player_symbol: Tile) -> Vec<Board> {

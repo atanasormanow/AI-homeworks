@@ -4,79 +4,80 @@ use std::io;
 mod board;
 
 use board::{
-  flip_tile,
-  print_board,
-  print_successors,
-  successors,
-  terminal_state_score,
-  terminal_state_winner,
-  Board,
-  Tile,
+  flip_tile, print_board, print_successors, successors, terminal_state_score, Board, Tile,
 };
 
-// TODO merge max_move and min_move
-fn max_move((v1, b1): (i8, Board), (v2, b2): (i8, Board)) -> (i8, Board) {
-  if v1 > v2 {
-    (v1, b1)
-  } else {
-    (v2, b2)
-  }
-}
-
-fn min_move((v1, b1): (i8, Board), (v2, b2): (i8, Board)) -> (i8, Board) {
-  if v1 < v2 {
-    (v1, b1)
-  } else {
-    (v2, b2)
-  }
-}
-
-fn max_value(board: Board, player_symbol: Tile) -> (i8, Board) {
+fn max_value(board: Board, player_symbol: Tile) -> i8 {
   match terminal_state_score(board, player_symbol) {
     Some(score) => {
-      println!("Its a terminal state with score: {:?}", score);
-      (score, board)
-}
-    None => {
-      let max_of_min = |current_max: (i8, Board), b: Board| {
-        max_move(current_max, min_value(b, flip_tile(player_symbol)))
-      };
-
-      let (val, succ) = successors(board, player_symbol)
-        .into_iter()
-        // TODO It's weird to have board as a default value
-        .fold((i8::MIN, board), max_of_min);
-      // TODO investigate if the player symbol is calculated correctly
-      println!("Max choice with score: {val}; for player {:?}", player_symbol);
-      print_board(succ);
-      (val, succ)
+      println!(
+        "Its a terminal state with score {:?} for player {:?}",
+        score, player_symbol
+      );
+      print_board(board);
+      score
     }
+    None => successors(board, player_symbol)
+      .into_iter()
+      .fold(i8::MIN, |current_max, b| {
+        let min_val = min_value(b, flip_tile(player_symbol));
+        println!("Choosing the best of {:?} and {:?} ", current_max, min_val);
+        println!("And currently looking at (for player {:?}):", player_symbol);
+        print_board(b);
+        max(current_max, min_val)
+      }),
   }
 }
 
-fn min_value(board: Board, player_symbol: Tile) -> (i8, Board) {
-  match terminal_state_score(board, player_symbol) {
-    Some(score) => (score, board),
-    None => {
-      let min_of_max = |current_min: (i8, Board), b: Board| {
-        min_move(current_min, max_value(b, flip_tile(player_symbol)))
-      };
+fn min_value(board: Board, player_symbol: Tile, i) -> i8 {
+  -1
 
-      let (val, succ) = successors(board, player_symbol)
-        .into_iter()
-        // TODO It's weird to have board as a default value
-        .fold((i8::MAX, board), min_of_max);
-
-      println!("Min choice with score: {val}; for player {:?}", player_symbol);
-      print_board(succ);
-      (val, succ)
-    }
-  }
+  // match terminal_state_score(board, player_symbol) {
+  //   Some(score) => {
+  //     println!(
+  //       "Its a terminal state with score {:?} for player {:?}",
+  //       score, player_symbol
+  //     );
+  //     print_board(board);
+  //     score
+  //   }
+  //   None => successors(board, player_symbol)
+  //     .into_iter()
+  //     .fold(i8::MAX, |current_min, b| {
+  //       let max_val = max_value(b, flip_tile(player_symbol));
+  //       println!("Choosing the worst of {:?} and {:?} ", current_min, max_val);
+  //       println!("And currently looking at (for player {:?}):", player_symbol);
+  //       print_board(b);
+  //       min(current_min, max_val)
+  //     }),
+  // }
 }
 
 fn minimax_decision(board: Board, player_symbol: Tile) -> Board {
-  let (_, succ) = max_value(board, player_symbol);
-  succ
+  match terminal_state_score(board, player_symbol) {
+    Some(score) => {
+      println!(
+        "Game over, player with score {:?} for player {:?} wins",
+        score, player_symbol
+      );
+      print_board(board);
+      board
+    }
+    None => {
+      let (_, next_best) = successors(board, player_symbol).into_iter().fold(
+        (i8::MIN, board),
+        |(curr_min, b), succ| {
+          let min_val = min_value(succ, player_symbol);
+          if min_val > curr_min {
+            return (min_val, succ);
+          } else {
+            return (curr_min, b);
+          }
+        },
+      );
+      next_best
+    }
+  }
 }
 
 fn main() {
@@ -98,18 +99,18 @@ fn main() {
 
   // let input = (0, 2);
   let board: Board = [
-    [Tile::X, Tile::E, Tile::X],
-    [Tile::X, Tile::X, Tile::O],
-    [Tile::O, Tile::E, Tile::O],
+    [Tile::O, Tile::X, Tile::E],
+    [Tile::O, Tile::X, Tile::E],
+    [Tile::X, Tile::O, Tile::E],
   ];
-  println!("Starting state:");
+
+  let first_player = Tile::X;
+  println!("Starting state (player {:?}'s turn):", first_player);
   print_board(board);
 
-  println!("State score: {:?}", terminal_state_winner(board));
-
-  // let succ = minimax_decision(board, Tile::O);
-  // println!("Best move:");
-  // print_board(succ);
+  let succ = minimax_decision(board, Tile::O);
+  println!("Best move:");
+  print_board(succ);
 }
 
 // TODO:
