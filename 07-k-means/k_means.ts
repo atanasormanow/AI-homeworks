@@ -72,16 +72,10 @@ function kRandomCentroids(k: number): Centroid[] {
   });
 }
 
-// Hint: isEqual
+// Update cluster locations to the avg of its points and form new clusters
 function step(clusters: Cluster[], points: Point[]): Cluster[] {
-  // Update cluster locations to the avg of its points
   const newCentroids: Centroid[] = clusters.map(updateCentroid);
-
-  // Update which points belong to which cluster
-  // TODO: determine type
-  const newClusters = _.groupBy(points, p => findClosestCentroid(newCentroids, p));
-  console.log(newClusters);
-  return [];
+  return formClusters(newCentroids, points);
 }
 
 async function main() {
