@@ -30,8 +30,8 @@ function updateCentroid({ points: p }: Cluster): Centroid {
 }
 
 // find the closest centroid to a given point
-function findClosestCentroid(centroids: Centroid[], { x, y }: Point): Centroid {
-  const [_d, cent]: [number, Point] =
+function findClosestCentroid(centroids: Centroid[], { x, y }: Point): String {
+  const [_d, closestCentroid]: [number, Point] =
     _.reduce(centroids,
       ([d, c0], { x: x1, y: y1 }) => {
 
@@ -42,19 +42,20 @@ function findClosestCentroid(centroids: Centroid[], { x, y }: Point): Centroid {
           return [currentDistance, { x: x1, y: y1 }];
         } else return [d, c0];
       },
-      [0, { x, y }]); // Default value is the point itself
-  return cent;
+      [Infinity, { x, y }]);
+
+  // return String in order for groupBy to work
+  return JSON.stringify(closestCentroid);
 }
 
-// TODO
 function formClusters(centroids: Centroid[], points: Point[]): Cluster[] {
-  // const matchToClosestCentroid
-  //   = points.map(p => [p, findClosestCentroid(centroids, p)]);
-
   const newClusters =
     _.groupBy(points, p => findClosestCentroid(centroids, p));
-  console.log(newClusters);
-  return [];
+
+  return _.keys(newClusters)
+    .map(k => {
+      return { centroid: JSON.parse(k), points: newClusters[k] }
+    });
 }
 
 function getRandomFloat(min: number, max: number, decimals: number) {
