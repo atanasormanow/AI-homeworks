@@ -78,6 +78,15 @@ function step(clusters: Cluster[], points: Point[]): Cluster[] {
   return formClusters(newCentroids, points);
 }
 
+export async function getPoints() {
+  readFile("static/normal.txt").then(content => {
+    return parseDataPoints(content.toString());
+  }).catch(error => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}
+
 async function main() {
   readFile("static/normal.txt").then(content => {
     const points = parseDataPoints(content.toString());
