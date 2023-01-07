@@ -101,3 +101,11 @@ async function main() {
 }
 
 main();
+
+// TODO's:
+// - determine number of clusters
+// - score clusterization
+// - determine step iterations based on the score
+// - add random restart and compare scores
+// - fix exporting to render.js (used in the html)
+// - add colors once rendering works
