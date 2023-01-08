@@ -12,6 +12,7 @@
     "typescript": "^4.8.4"
   },
   "scripts": {
-    "start": "ts-node k_means.ts"
+    "start": "ts-node k_means.ts",
+    "plot": "python ./python/read-and-plot.py"
   }
 }

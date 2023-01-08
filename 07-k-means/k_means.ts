@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { readFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 
 type Point = {
   x: number,
@@ -78,12 +78,34 @@ function step(clusters: Cluster[], points: Point[]): Cluster[] {
   return formClusters(newCentroids, points);
 }
 
-async function main() {
+// TODO maybe build this in the Centroid type itself
+const someContrastingColors = ['blue', 'red', 'green', 'pink', 'orange', 'black'];
+
+function saveClusters(clusters: Cluster[]) {
+  // TODO maybe build this in the Centroid type itself
+  let localColors = _.clone(someContrastingColors);
+
+  const flattenCluster =
+    ({ points }: Cluster, color: string): string[] => {
+      return points.map(({ x, y }) => [x, y, color + '\n'].toString())
+    }
+
+  const stringifiedClusters =
+    _.flatMap(clusters, cluster => flattenCluster(cluster, localColors.pop()));
+
+  writeFile('out/output.txt', stringifiedClusters).catch(error => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}
+
+function main() {
   readFile("static/normal.txt").then(content => {
     const points = parseDataPoints(content.toString());
     const centroids = kRandomCentroids(5);
     const clusters = formClusters(centroids, points);
-    console.log(clusters);
+    saveClusters(clusters);
+    // console.log(clusters);
 
   }).catch(error => {
     console.error(error.message);
