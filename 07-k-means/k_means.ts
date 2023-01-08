@@ -63,6 +63,7 @@ function getRandomFloat(min: number, max: number, decimals: number) {
   return parseFloat(str);
 }
 
+// TODO: adjust the interval based on the data (or normalize)
 function kRandomCentroids(k: number): Centroid[] {
   return _.range(k).map(_x => {
     return {
@@ -73,9 +74,18 @@ function kRandomCentroids(k: number): Centroid[] {
 }
 
 // Update cluster locations to the avg of its points and form new clusters
-function step(clusters: Cluster[], points: Point[]): Cluster[] {
+// Do this until a fixed point is reached
+function stabilizeCentroids(clusters: Cluster[], points: Point[]): Cluster[] {
   const newCentroids: Centroid[] = clusters.map(updateCentroid);
-  return formClusters(newCentroids, points);
+  let newClusters: Cluster[] = clusters;
+
+  while (
+    !_.isEqual(newClusters.map(({ centroid }) => centroid), newCentroids)
+  ) {
+    newClusters = formClusters(newCentroids, points);
+  }
+
+  return newClusters;
 }
 
 // TODO maybe build this in the Centroid type itself
@@ -102,11 +112,12 @@ function saveClusters(clusters: Cluster[]) {
 function main() {
   readFile("static/normal.txt").then(content => {
     const points = parseDataPoints(content.toString());
-    const centroids = kRandomCentroids(5);
+    //TODO: use the elbow method to pick k
+    const k = Math.sqrt(points.length);
+    const centroids = kRandomCentroids(k);
     const clusters = formClusters(centroids, points);
-    saveClusters(clusters);
-    // console.log(clusters);
-
+    const stableClusters = stabilizeCentroids(clusters, points);
+    saveClusters(stableClusters);
   }).catch(error => {
     console.error(error.message);
     process.exit(1);
@@ -116,7 +127,6 @@ function main() {
 main();
 
 // TODO's:
-// - determine number of clusters
 // - score clusterization
 // - determine step iterations based on the score
 // - add random restart and compare scores
