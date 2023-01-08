@@ -82,8 +82,8 @@ function kRandomCentroids(k: number, points: Point[]): Centroid[] {
 // Update cluster locations to the avg of its points and form new clusters
 // Do this until a fixed point is reached
 function stabilizeCentroids(clusters: Cluster[], points: Point[]): Cluster[] {
-  let newCentroids: Centroid[] = clusters.map(updateCentroid);
   let newClusters: Cluster[] = clusters;
+  let newCentroids: Centroid[] = clusters.map(updateCentroid);
 
   while (
     !_.isEqual(newClusters.map(({ centroid }) => centroid), newCentroids)
@@ -95,7 +95,7 @@ function stabilizeCentroids(clusters: Cluster[], points: Point[]): Cluster[] {
   return newClusters;
 }
 
-function saveClusters(clusters: Cluster[]) {
+function saveClusters(clusters: Cluster[], file: string) {
   // TODO maybe build this in the Centroid type itself
   let localColors =
     ['purple', 'blue', 'pink', 'yellow', 'green', 'cyan', 'orange', 'red'];
@@ -108,7 +108,7 @@ function saveClusters(clusters: Cluster[]) {
   const stringifiedClusters =
     _.flatMap(clusters, cluster => flattenCluster(cluster, localColors.pop()));
 
-  writeFile('out/output.txt', stringifiedClusters).catch(error => {
+  writeFile(file, stringifiedClusters).catch(error => {
     console.error(error.message);
     process.exit(1);
   });
@@ -128,23 +128,24 @@ function testKValues(points: Point[]) {
   });
 }
 
-function main() {
-  readFile("static/normal.txt").then(content => {
+function kMeans(k: number, file: string) {
+  readFile(file).then(content => {
     const points = parseDataPoints(content.toString());
-    // use the elbow method to pick k
-    // testKValues(points);
-    const k = 4;
     const centroids = kRandomCentroids(k, points);
     const clusters = formClusters(centroids, points);
     const stableClusters = stabilizeCentroids(clusters, points);
-    saveClusters(stableClusters);
+    saveClusters(stableClusters, 'out/output.txt');
   }).catch(error => {
     console.error(error.message);
     process.exit(1);
   });
 }
 
-main();
+kMeans(4, "static/normal.txt");
+// kMeans(2, "static/unbalance.txt");
+
+// use the elbow method to pick k
+// testKValues(points);
 
 // TODO's:
 // - add random restart and compare results from diferent iterations
