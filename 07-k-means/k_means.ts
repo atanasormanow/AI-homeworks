@@ -22,6 +22,10 @@ function parseDataPoints(content: string): Point[] {
     });
 }
 
+function distance({ x, y }: Point, { x: x0, y: y0 }: Point): number {
+  return Math.sqrt(Math.pow(x - x0, 2) + Math.pow(y - y0, 2));
+}
+
 // Find the new centroid location for a cluster
 function updateCentroid({ points: p }: Cluster): Centroid {
   const [xsum, ysum] =
@@ -30,19 +34,18 @@ function updateCentroid({ points: p }: Cluster): Centroid {
 }
 
 // find the closest centroid to a given point
-function findClosestCentroid(centroids: Centroid[], { x, y }: Point): String {
+function findClosestCentroid(centroids: Centroid[], p: Point): String {
   const [_d, closestCentroid]: [number, Point] =
     _.reduce(centroids,
-      ([d, c0], { x: x1, y: y1 }) => {
+      ([d, c0], c) => {
 
-        const currentDistance
-          = Math.sqrt(Math.pow(x - x1, 2) + Math.pow(y - y1, 2))
+        const currentDistance = distance(p, c);
 
         if (currentDistance < d) {
-          return [currentDistance, { x: x1, y: y1 }];
+          return [currentDistance, c];
         } else return [d, c0];
       },
-      [Infinity, { x, y }]);
+      [Infinity, p]);
 
   // return String in order for groupBy to work
   return JSON.stringify(closestCentroid);
@@ -58,19 +61,20 @@ function formClusters(centroids: Centroid[], points: Point[]): Cluster[] {
     });
 }
 
-function getRandomFloat(min: number, max: number, decimals: number) {
-  const str = (Math.random() * (max - min) + min).toFixed(decimals);
-  return parseFloat(str);
+function internalClusterDistance({ centroid, points }: Cluster): number {
+  return _.reduce(
+    points,
+    (acc, p) => acc + distance(p, centroid),
+    0
+  ) / points.length;
 }
 
-// TODO: adjust the interval based on the data (or normalize)
-function kRandomCentroids(k: number): Centroid[] {
-  return _.range(k).map(_x => {
-    return {
-      x: getRandomFloat(1, 10, 3),
-      y: getRandomFloat(1, 10, 3)
-    }
-  });
+function getRandomInt(max: number): number {
+  return Math.floor(Math.random() * max);
+}
+
+function kRandomCentroids(k: number, points: Point[]): Centroid[] {
+  return _.range(k).map(_x => points[getRandomInt(points.length)]);
 }
 
 // Update cluster locations to the avg of its points and form new clusters
@@ -88,12 +92,9 @@ function stabilizeCentroids(clusters: Cluster[], points: Point[]): Cluster[] {
   return newClusters;
 }
 
-// TODO maybe build this in the Centroid type itself
-const someContrastingColors = ['blue', 'red', 'green', 'pink', 'orange', 'black'];
-
 function saveClusters(clusters: Cluster[]) {
   // TODO maybe build this in the Centroid type itself
-  let localColors = _.clone(someContrastingColors);
+  let localColors = ['blue', 'green', 'pink', 'orange', 'red'];
 
   const flattenCluster =
     ({ points }: Cluster, color: string): string[] => {
@@ -113,8 +114,8 @@ function main() {
   readFile("static/normal.txt").then(content => {
     const points = parseDataPoints(content.toString());
     //TODO: use the elbow method to pick k
-    const k = Math.sqrt(points.length);
-    const centroids = kRandomCentroids(k);
+    const k = 4;
+    const centroids = kRandomCentroids(k, points);
     const clusters = formClusters(centroids, points);
     const stableClusters = stabilizeCentroids(clusters, points);
     saveClusters(stableClusters);
@@ -129,6 +130,6 @@ main();
 // TODO's:
 // - score clusterization
 // - determine step iterations based on the score
-// - add random restart and compare scores
-// - fix exporting to render.js (used in the html)
-// - add colors once rendering works
+// - add random restart and compare results from diferent iterations
+// - save cluster locations in separate file and plot them
+// - refine the algorithm for the "unbalanced" data
