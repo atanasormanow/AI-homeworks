@@ -61,12 +61,14 @@ function formClusters(centroids: Centroid[], points: Point[]): Cluster[] {
     });
 }
 
-function internalClusterDistance({ centroid, points }: Cluster): number {
-  return _.reduce(
-    points,
-    (acc, p) => acc + distance(p, centroid),
-    0
-  ) / points.length;
+// The sum of distances of all points to their centroid (the lower the better)
+function withinPointScatter(clusters: Cluster[]): number {
+  const scatterPerCluster = ({ centroid, points }: Cluster) => {
+    // NOTE: the formula usually uses the squared distance
+    return _.reduce(points, (acc, p) => acc + distance(p, centroid), 0);
+  }
+
+  return _.reduce(clusters, (acc, c) => acc + scatterPerCluster(c), 0);
 }
 
 function getRandomInt(max: number): number {
@@ -129,7 +131,6 @@ main();
 
 // TODO's:
 // - score clusterization
-// - determine step iterations based on the score
 // - add random restart and compare results from diferent iterations
 // - save cluster locations in separate file and plot them
 // - refine the algorithm for the "unbalanced" data
