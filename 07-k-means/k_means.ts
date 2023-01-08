@@ -130,21 +130,48 @@ function testKValues(points: Point[]) {
   });
 }
 
-function kMeans(k: number, file: string) {
-  readFile(file).then(content => {
+function kMeans(k: number, file: string): Promise<Cluster[]> {
+  return readFile(file).then(content => {
     const points = parseDataPoints(content.toString(), ' ');
     const centroids = kRandomCentroids(k, points);
     const clusters = formClusters(centroids, points);
-    const stableClusters = stabilizeCentroids(clusters, points);
-    saveClusters(stableClusters, 'out/output.txt');
+    return stabilizeCentroids(clusters, points);
+    // saveClusters(stableClusters, 'out/output.txt');
   }).catch(error => {
     console.error(error.message);
     process.exit(1);
   });
 }
 
+function chooseBestAmongK(k: number, file: string) {
+  readFile(file).then(content => {
+    const points = parseDataPoints(content.toString(), ' ');
+    let bestScore: number = Infinity;
+    let bestClusters: Cluster[] = [];
+
+    for (let i = 0; i < k; i++) {
+      const centroids = kRandomCentroids(8, points);
+      const clusters = formClusters(centroids, points);
+      const finalClusters = stabilizeCentroids(clusters, points);
+      const score = withinPointScatter(finalClusters);
+      console.log("Clustering with internal scatter: ", score);
+
+      if (score < bestScore) {
+        bestScore = score;
+        bestClusters = finalClusters;
+      }
+    }
+    console.log("Clustering with the BEST internal scatter: ", bestScore);
+    saveClusters(bestClusters, 'out/output.txt');
+  }).catch(error => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}
+
+chooseBestAmongK(1000, 'static/unbalance.txt');
 // kMeans(4, "static/normal.txt");
-kMeans(8, "static/unbalance.txt");
+// kMeans(8, "static/unbalance.txt");
 
 // use the elbow method to pick k
 // testKValues(points);
