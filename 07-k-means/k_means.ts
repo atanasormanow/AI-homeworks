@@ -13,11 +13,11 @@ type Cluster = {
   points: Point[]
 }
 
-function parseDataPoints(content: string): Point[] {
+function parseDataPoints(content: string, delimiter: string): Point[] {
   return content
     .split('\n')
     .map(entry => {
-      const sep = entry.split('\t')
+      const sep = entry.split(delimiter)
       return { x: +sep[0], y: +sep[1] }
     });
 }
@@ -88,6 +88,8 @@ function stabilizeCentroids(clusters: Cluster[], points: Point[]): Cluster[] {
   while (
     !_.isEqual(newClusters.map(({ centroid }) => centroid), newCentroids)
   ) {
+    // console.log(newClusters.map(({centroid}) => centroid));
+    // console.log(newCentroids);
     newClusters = formClusters(newCentroids, points);
     newCentroids = newClusters.map(updateCentroid);
   }
@@ -130,7 +132,7 @@ function testKValues(points: Point[]) {
 
 function kMeans(k: number, file: string) {
   readFile(file).then(content => {
-    const points = parseDataPoints(content.toString());
+    const points = parseDataPoints(content.toString(), ' ');
     const centroids = kRandomCentroids(k, points);
     const clusters = formClusters(centroids, points);
     const stableClusters = stabilizeCentroids(clusters, points);
@@ -141,8 +143,8 @@ function kMeans(k: number, file: string) {
   });
 }
 
-kMeans(4, "static/normal.txt");
-// kMeans(2, "static/unbalance.txt");
+// kMeans(4, "static/normal.txt");
+kMeans(8, "static/unbalance.txt");
 
 // use the elbow method to pick k
 // testKValues(points);
