@@ -1,4 +1,4 @@
-import _ from "lodash";
+import _, { attempt } from "lodash";
 import { readFile, writeFile } from "fs/promises";
 
 type Point = {
@@ -26,11 +26,15 @@ function distance({ x, y }: Point, { x: x0, y: y0 }: Point): number {
   return Math.sqrt(Math.pow(x - x0, 2) + Math.pow(y - y0, 2));
 }
 
+function meanCoords(points: Point[]): Point {
+  const [xsum, ysum] =
+    _.reduce(points, ([xs, ys], { x, y }) => [xs + x, ys + y], [0, 0]);
+  return { x: xsum / points.length, y: ysum / points.length };
+}
+
 // Find the new centroid location for a cluster
 function updateCentroid({ points: p }: Cluster): Centroid {
-  const [xsum, ysum] =
-    _.reduce(p, ([xs, ys], { x, y }) => [xs + x, ys + y], [0, 0]);
-  return { x: xsum / p.length, y: ysum / p.length };
+  return meanCoords(p);
 }
 
 // find the closest centroid to a given point
@@ -38,7 +42,6 @@ function findClosestCentroid(centroids: Centroid[], p: Point): String {
   const [_d, closestCentroid]: [number, Point] =
     _.reduce(centroids,
       ([d, c0], c) => {
-
         const currentDistance = distance(p, c);
 
         if (currentDistance < d) {
@@ -64,7 +67,6 @@ function formClusters(centroids: Centroid[], points: Point[]): Cluster[] {
 // The sum of distances of all points to their centroid (the lower the better)
 function withinPointScatter(clusters: Cluster[]): number {
   const scatterPerCluster = ({ centroid, points }: Cluster) => {
-    // NOTE: the formula usually uses the squared distance
     return _.reduce(points, (acc, p) => acc + distance(p, centroid), 0);
   }
 
@@ -79,6 +81,47 @@ function kRandomCentroids(k: number, points: Point[]): Centroid[] {
   return _.range(k).map(_x => points[getRandomInt(points.length)]);
 }
 
+// const farthestPoint = (c: Centroid, ps: Point[]): Point => {
+//   const [distance, point] =
+//     _.reduce(
+//       ps,
+//       ([d, p0], p) => {
+//         const currentDistance = distance(p, c);
+
+//         if (currentDistance > d) {
+//           return [d, p0]
+//         } else return [currentDistance, p];
+//       },
+//       [-Infinity, c]
+//     );
+//   return point;
+// }
+function kFarApartCentroids(k: number, points: Point[]): Centroid[] {
+  const generateRandomCentroids = () => {
+    return _.range(k).map(_x => points[getRandomInt(points.length)]);
+  }
+
+  const scatter = (ps: Point[], m: Point) => {
+    return _.reduce(ps, (acc, p) => acc + distance(p, m), 0);
+  }
+
+  const attempts = 10000;
+  let bestCentroids = generateRandomCentroids();
+  let bestDistance = scatter(bestCentroids, meanCoords(bestCentroids));
+
+  for (let i = 0; i < attempts; i++) {
+    const newCentroids = generateRandomCentroids();
+    const newDistance = scatter(newCentroids, meanCoords(newCentroids));
+
+    if (newDistance > bestDistance) {
+      bestDistance = newDistance;
+      bestCentroids = newCentroids;
+    }
+  }
+
+  return bestCentroids;
+}
+
 // Update cluster locations to the avg of its points and form new clusters
 // Do this until a fixed point is reached
 function stabilizeCentroids(clusters: Cluster[], points: Point[]): Cluster[] {
@@ -88,8 +131,6 @@ function stabilizeCentroids(clusters: Cluster[], points: Point[]): Cluster[] {
   while (
     !_.isEqual(newClusters.map(({ centroid }) => centroid), newCentroids)
   ) {
-    // console.log(newClusters.map(({centroid}) => centroid));
-    // console.log(newCentroids);
     newClusters = formClusters(newCentroids, points);
     newCentroids = newClusters.map(updateCentroid);
   }
@@ -150,7 +191,7 @@ function chooseBestAmongK(k: number, file: string) {
     let bestClusters: Cluster[] = [];
 
     for (let i = 0; i < k; i++) {
-      const centroids = kRandomCentroids(8, points);
+      const centroids = kFarApartCentroids(8, points);
       const clusters = formClusters(centroids, points);
       const finalClusters = stabilizeCentroids(clusters, points);
       const score = withinPointScatter(finalClusters);
@@ -169,7 +210,8 @@ function chooseBestAmongK(k: number, file: string) {
   });
 }
 
-chooseBestAmongK(1000, 'static/unbalance.txt');
+chooseBestAmongK(100, 'static/unbalance.txt');
+
 // kMeans(4, "static/normal.txt");
 // kMeans(8, "static/unbalance.txt");
 
@@ -177,6 +219,5 @@ chooseBestAmongK(1000, 'static/unbalance.txt');
 // testKValues(points);
 
 // TODO's:
-// - add random restart and compare results from diferent iterations
+// - kMeans++
 // - save cluster locations in separate file and plot them
-// - refine the algorithm for the "unbalanced" data
