@@ -1,5 +1,5 @@
 import { readFile } from "fs";
-import _ from "lodash";
+import _, { forEach } from "lodash";
 const { maxBy, shuffle, groupBy, values, range } = _;
 
 type Dataset = {
@@ -26,6 +26,7 @@ function readData(): Promise<string[]> {
     })
   });
 }
+
 async function parseData()
   : Promise<{ className: string, attributes: string[] }[]> {
   const content = await readData();
@@ -39,37 +40,35 @@ async function parseData()
   //   .map(set => Array.from(set.keys()))
 }
 
-// TODO fill in missing with the most common measurments
+// Fills in missing data with the mode of the coresponding attribute
 function fillMissing(dataset: Dataset): Dataset {
-  // Group by each attribute
-  // group_by_attribute := {attr_value => entries_with_that_value}
-  // modes := group_by_attribute foreach attribute, attribute = index
   const modes =
     range(numberOfAttributes)
-      .map(i => groupBy(dataset, entry => entry.attributes[i]));
-  console.log(modes);
-  return [];
+      .map(i => {
+        const group = groupBy(dataset, entry => entry.attributes[i])
+        return maxBy(_.toPairs(group), ([_, vs]) => vs.length)[0];
+      });
 
-  // range(numberOfAttributes).forEach(i => {
-  //   const group = groupBy(dataset, entry => entry.attributes[i]);
-  //   const mostCommon = maxBy(values(group), g => g.length)[0].attributes[i];
-  //   dataset = dataset.map(entry => {
-  //     if (entry.attributes[i] === '?') {
-  //       entry.attributes[i] = mostCommon;
-  //     }
-  //     return entry;
-  //   });
-  // });
+  const fillEntry = ({ className, attributes }) => {
+    range(numberOfAttributes).forEach(i => {
+      if (attributes[i] === '?') {
+        attributes[i] = modes[i];
+      }
+    });
+    return { className, attributes };
+  };
+
+ return dataset.map(fillEntry);
 }
+
 
 async function main() {
   const dataset = await parseData();
-  console.log(dataset);
+  // console.log(dataset);
   const totalData = fillMissing(dataset);
 }
 
 main();
 
 // TODOs:
-// -- fill missing data (find out how)
 // -- don't use global variables
