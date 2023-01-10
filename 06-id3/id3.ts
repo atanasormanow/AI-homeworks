@@ -1,6 +1,6 @@
 import { readFile } from "fs";
-import _, { forEach } from "lodash";
-const { maxBy, shuffle, groupBy, values, range } = _;
+import _ from "lodash";
+const { maxBy, shuffle, groupBy, range } = _;
 
 type Entry = {
   className: string,
