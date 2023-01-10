@@ -188,7 +188,7 @@ function crossValidate(
 
     const accuracy = testModel(model, testData);
     total += accuracy;
-    console.log(i, accuracy);
+    console.log(`${i + 1}: `, accuracy);
   }
 
   return total / folds;
