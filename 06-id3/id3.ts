@@ -211,5 +211,4 @@ async function main() {
 main();
 
 // TODOs:
-// - don't use global variables
 // - type for "root"/"model"
