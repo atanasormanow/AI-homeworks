@@ -205,7 +205,7 @@ async function main() {
   const dataset = await parseData();
   const totalDataset = fillMissing(dataset);
   const attributeValues = getAttributeValues(dataset);
-  console.log(crossValidate(totalDataset, folds, attributeValues));
+  console.log(`Mean accuracy for ${folds} fold validation:`,crossValidate(totalDataset, folds, attributeValues));
 }
 
 main();
