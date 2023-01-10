@@ -13,10 +13,7 @@ const possitiveClass = 'recurrence-events';
 const negativeClass = 'no-recurrence-events';
 const fileName = 'static/breast-cancer.data';
 const minK = 5;
-const folds = 10;
 const numberOfAttributes = 9;
-const root = {};
-let databackup;
 
 
 function readData(): Promise<string[]> {
